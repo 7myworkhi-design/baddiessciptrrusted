@@ -1,0 +1,28 @@
+print("🔍 Searching for Trade RemoteEvent...")
+
+local function searchForRemotes(parent, depth)
+	if depth > 5 then return end
+	
+	pcall(function()
+		for _, obj in pairs(parent:GetChildren()) do
+			if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+				local name = obj.Name:lower()
+				if name:match("trade") or name:match("request") or name:match("offer") then
+					print("✅ FOUND: " .. obj.ClassName .. " at " .. obj:GetFullName())
+				end
+			end
+			searchForRemotes(obj, depth + 1)
+		end
+	end)
+end
+
+print("Searching ReplicatedStorage...")
+searchForRemotes(game:GetService("ReplicatedStorage"), 0)
+
+print("Searching ServerScriptService...")
+searchForRemotes(game:GetService("ServerScriptService"), 0)
+
+print("Searching Workspace...")
+searchForRemotes(game.Workspace, 0)
+
+print("Search complete! Check above for any RemoteEvents with 'trade', 'request', or 'offer' in the name.")
