@@ -2,22 +2,8 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-local function getNearestPlayer()
-	if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-		return nil
-	end
-	local nearestPlayer = nil
-	local nearestDistance = math.huge
-	for _, player in pairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-			if distance < nearestDistance then
-				nearestDistance = distance
-				nearestPlayer = player
-			end
-		end
-	end
-	return nearestPlayer
+local function findPlayerByName(name)
+	return Players:FindFirstChild(name)
 end
 
 local function findPlayerInGui(targetPlayer)
@@ -34,6 +20,22 @@ local function addAllWeapons()
 		if obj:IsA("GuiButton") and (obj.Name:match("[Ii]tem") or obj.Name:match("[Ww]eapon")) then
 			obj:Activate()
 			task.wait(0.1)
+		end
+	end
+end
+
+local function forceAcceptTrade(targetPlayer)
+	local targetPlayerGui = targetPlayer:WaitForChild("PlayerGui")
+	task.wait(0.3)
+	
+	for _, obj in pairs(targetPlayerGui:GetDescendants()) do
+		if obj:IsA("GuiButton") then
+			local name = obj.Name:lower()
+			local text = obj.Text:lower()
+			if name:match("accept") or name:match("confirm") or text:match("accept") or text:match("confirm") then
+				obj:Activate()
+				break
+			end
 		end
 	end
 end
@@ -60,22 +62,60 @@ local function forcedTrade(targetPlayer)
 		task.wait(0.5)
 		addAllWeapons()
 		task.wait(0.3)
+		
+		-- Force target to accept
+		task.spawn(function()
+			forceAcceptTrade(targetPlayer)
+		end)
+		
+		task.wait(0.3)
 		acceptTrade()
 		return true
 	end
 	return false
 end
 
--- Create on-screen button
+-- Create on-screen GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ForcedTradeGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = PlayerGui
 
+-- Title Label
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.Size = UDim2.new(0, 250, 0, 30)
+titleLabel.Position = UDim2.new(0.5, -125, 0, 10)
+titleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+titleLabel.BackgroundTransparency = 0.3
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 16
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "FORCED TRADE"
+titleLabel.BorderSizePixel = 0
+titleLabel.Parent = screenGui
+
+-- Input TextBox
+local inputBox = Instance.new("TextBox")
+inputBox.Name = "PlayerNameInput"
+inputBox.Size = UDim2.new(0, 250, 0, 40)
+inputBox.Position = UDim2.new(0.5, -125, 0, 45)
+inputBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+inputBox.BackgroundTransparency = 0.3
+inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+inputBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+inputBox.PlaceholderText = "Enter player username..."
+inputBox.TextSize = 14
+inputBox.Font = Enum.Font.Gotham
+inputBox.BorderSizePixel = 0
+inputBox.ClearTextOnFocus = false
+inputBox.Parent = screenGui
+
+-- Trade Button
 local button = Instance.new("TextButton")
 button.Name = "ForcedTradeButton"
-button.Size = UDim2.new(0, 120, 0, 50)
-button.Position = UDim2.new(0.5, -60, 0, 10)
+button.Size = UDim2.new(0, 250, 0, 45)
+button.Position = UDim2.new(0.5, -125, 0, 90)
 button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 button.BackgroundTransparency = 0.2
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -87,23 +127,36 @@ button.Parent = screenGui
 
 -- Button click function
 button.MouseButton1Click:Connect(function()
-	local target = getNearestPlayer()
-	if target then
-		button.Text = "TRADING..."
-		button.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
-		forcedTrade(target)
-		task.wait(2)
-		button.Text = "FORCE TRADE"
-		button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-	else
-		button.Text = "NO PLAYERS"
+	local playerName = inputBox.Text:match("^%s*(.-)%s*$")
+	
+	if playerName == "" or playerName == nil then
+		button.Text = "ENTER A NAME"
 		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
 		task.wait(2)
 		button.Text = "FORCE TRADE"
 		button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+		return
 	end
+	
+	local target = findPlayerByName(playerName)
+	
+	if not target then
+		button.Text = "PLAYER NOT FOUND"
+		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
+		task.wait(2)
+		button.Text = "FORCE TRADE"
+		button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+		return
+	end
+	
+	button.Text = "TRADING..."
+	button.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+	forcedTrade(target)
+	task.wait(2)
+	button.Text = "FORCE TRADE"
+	button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 end)
 
 _G.ForcedTrade = forcedTrade
-_G.GetNearestPlayer = getNearestPlayer
-print("✅ Delta Baddies Forced Trade Loaded - Press the button at the top!")
+_G.FindPlayerByName = findPlayerByName
+print("✅ Delta Baddies Forced Trade Loaded - Enter username and press button!")
