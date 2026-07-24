@@ -1,5 +1,7 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+
+wait(1)
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local function findPlayerByName(name)
@@ -63,7 +65,6 @@ local function forcedTrade(targetPlayer)
 		addAllWeapons()
 		task.wait(0.3)
 		
-		-- Force target to accept
 		task.spawn(function()
 			forceAcceptTrade(targetPlayer)
 		end)
@@ -75,88 +76,91 @@ local function forcedTrade(targetPlayer)
 	return false
 end
 
--- Create on-screen GUI
+print("Creating GUI...")
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ForcedTradeGui"
 screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 999
 screenGui.Parent = PlayerGui
 
--- Title Label
+print("GUI Created, adding elements...")
+
+local frame = Instance.new("Frame")
+frame.Name = "MainFrame"
+frame.Size = UDim2.new(0, 280, 0, 150)
+frame.Position = UDim2.new(0.5, -140, 0, 10)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BackgroundTransparency = 0.1
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Name = "TitleLabel"
-titleLabel.Size = UDim2.new(0, 250, 0, 30)
-titleLabel.Position = UDim2.new(0.5, -125, 0, 10)
-titleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 titleLabel.BackgroundTransparency = 0.3
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextSize = 16
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.Text = "FORCED TRADE"
 titleLabel.BorderSizePixel = 0
-titleLabel.Parent = screenGui
+titleLabel.Parent = frame
 
--- Input TextBox
 local inputBox = Instance.new("TextBox")
-inputBox.Name = "PlayerNameInput"
-inputBox.Size = UDim2.new(0, 250, 0, 40)
-inputBox.Position = UDim2.new(0.5, -125, 0, 45)
-inputBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-inputBox.BackgroundTransparency = 0.3
+inputBox.Name = "Input"
+inputBox.Size = UDim2.new(0.9, 0, 0, 35)
+inputBox.Position = UDim2.new(0.05, 0, 0, 35)
+inputBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+inputBox.BackgroundTransparency = 0.2
 inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-inputBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
-inputBox.PlaceholderText = "Enter player username..."
+inputBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+inputBox.PlaceholderText = "Username"
 inputBox.TextSize = 14
 inputBox.Font = Enum.Font.Gotham
 inputBox.BorderSizePixel = 0
-inputBox.ClearTextOnFocus = false
-inputBox.Parent = screenGui
+inputBox.Parent = frame
 
--- Trade Button
 local button = Instance.new("TextButton")
-button.Name = "ForcedTradeButton"
-button.Size = UDim2.new(0, 250, 0, 45)
-button.Position = UDim2.new(0.5, -125, 0, 90)
+button.Name = "TradeBtn"
+button.Size = UDim2.new(0.9, 0, 0, 35)
+button.Position = UDim2.new(0.05, 0, 0, 75)
 button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 button.BackgroundTransparency = 0.2
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.TextSize = 18
+button.TextSize = 16
 button.Font = Enum.Font.GothamBold
-button.Text = "FORCE TRADE"
+button.Text = "TRADE"
 button.BorderSizePixel = 0
-button.Parent = screenGui
+button.Parent = frame
 
--- Button click function
+print("Button created!")
+
 button.MouseButton1Click:Connect(function()
 	local playerName = inputBox.Text:match("^%s*(.-)%s*$")
 	
 	if playerName == "" or playerName == nil then
-		button.Text = "ENTER A NAME"
-		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
+		button.Text = "ENTER NAME"
 		task.wait(2)
-		button.Text = "FORCE TRADE"
-		button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+		button.Text = "TRADE"
 		return
 	end
 	
 	local target = findPlayerByName(playerName)
 	
 	if not target then
-		button.Text = "PLAYER NOT FOUND"
-		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
+		button.Text = "NOT FOUND"
 		task.wait(2)
-		button.Text = "FORCE TRADE"
-		button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+		button.Text = "TRADE"
 		return
 	end
 	
 	button.Text = "TRADING..."
-	button.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
 	forcedTrade(target)
 	task.wait(2)
-	button.Text = "FORCE TRADE"
-	button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+	button.Text = "TRADE"
 end)
 
 _G.ForcedTrade = forcedTrade
-_G.FindPlayerByName = findPlayerByName
-print("✅ Delta Baddies Forced Trade Loaded - Enter username and press button!")
+print("✅ Script loaded! GUI should be visible at top.")
