@@ -1,28 +1,34 @@
-print("🔍 Searching for Trade RemoteEvent...")
+print("🔍 Intercepting RemoteEvent calls...")
 
-local function searchForRemotes(parent, depth)
-	if depth > 5 then return end
-	
-	pcall(function()
-		for _, obj in pairs(parent:GetChildren()) do
-			if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-				local name = obj.Name:lower()
-				if name:match("trade") or name:match("request") or name:match("offer") then
-					print("✅ FOUND: " .. obj.ClassName .. " at " .. obj:GetFullName())
-				end
-			end
-			searchForRemotes(obj, depth + 1)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local origFireServer = Instance.new("RemoteEvent").FireServer
+
+local function hookRemote(remote)
+	if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+		local originalFire = remote.FireServer
+		
+		function remote:FireServer(...)
+			print("📡 RemoteEvent fired: " .. remote:GetFullName())
+			print("   Args: ", ...)
+			return originalFire(self, ...)
 		end
-	end)
+	end
 end
 
-print("Searching ReplicatedStorage...")
-searchForRemotes(game:GetService("ReplicatedStorage"), 0)
+-- Hook all existing remotes
+for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+	if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+		hookRemote(obj)
+		print("✅ Hooked: " .. obj:GetFullName())
+	end
+end
 
-print("Searching ServerScriptService...")
-searchForRemotes(game:GetService("ServerScriptService"), 0)
+-- Hook new remotes as they're created
+ReplicatedStorage.ChildAdded:Connect(function(child)
+	if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+		hookRemote(child)
+		print("✅ Hooked new remote: " .. child:GetFullName())
+	end
+end)
 
-print("Searching Workspace...")
-searchForRemotes(game.Workspace, 0)
-
-print("Search complete! Check above for any RemoteEvents with 'trade', 'request', or 'offer' in the name.")
+print("✅ RemoteEvent logger active! Try sending a trade and check console.")
