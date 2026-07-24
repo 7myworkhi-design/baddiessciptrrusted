@@ -1,5 +1,4 @@
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -67,14 +66,44 @@ local function forcedTrade(targetPlayer)
 	return false
 end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.F then
-		local target = getNearestPlayer()
-		if target then forcedTrade(target) end
+-- Create on-screen button
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ForcedTradeGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+local button = Instance.new("TextButton")
+button.Name = "ForcedTradeButton"
+button.Size = UDim2.new(0, 120, 0, 50)
+button.Position = UDim2.new(0.5, -60, 0, 10)
+button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+button.BackgroundTransparency = 0.2
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.TextSize = 18
+button.Font = Enum.Font.GothamBold
+button.Text = "FORCE TRADE"
+button.BorderSizePixel = 0
+button.Parent = screenGui
+
+-- Button click function
+button.MouseButton1Click:Connect(function()
+	local target = getNearestPlayer()
+	if target then
+		button.Text = "TRADING..."
+		button.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+		forcedTrade(target)
+		task.wait(2)
+		button.Text = "FORCE TRADE"
+		button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+	else
+		button.Text = "NO PLAYERS"
+		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
+		task.wait(2)
+		button.Text = "FORCE TRADE"
+		button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 	end
 end)
 
 _G.ForcedTrade = forcedTrade
 _G.GetNearestPlayer = getNearestPlayer
-print("✅ Delta Baddies Forced Trade Loaded - Press F to use")
+print("✅ Delta Baddies Forced Trade Loaded - Press the button at the top!")
