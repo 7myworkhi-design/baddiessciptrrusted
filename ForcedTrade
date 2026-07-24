@@ -1,179 +1,75 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-local function findPlayerByName(name)
-	return Players:FindFirstChild(name)
-end
+print("🔍 Looking for trade RemoteEvents...")
 
-local function findButtonByText(text, parent)
-	for _, obj in pairs(parent:GetDescendants()) do
-		if obj:IsA("GuiButton") and obj.Text:match(text) then
-			return obj
-		end
-	end
-	return nil
-end
+-- Common remote event names for trading
+local possibleNames = {
+	"SendTrade",
+	"TradeRequest",
+	"RequestTrade",
+	"Trade",
+	"SendTradeRequest",
+	"InitiateTrade",
+	"OfferTrade",
+	"CreateTrade",
+	"StartTrade"
+}
 
-local function findObjectByText(text, parent)
-	for _, obj in pairs(parent:GetDescendants()) do
-		if (obj:IsA("GuiButton") or obj:IsA("TextLabel")) and obj.Text:match(text) then
-			return obj
-		end
-	end
-	return nil
-end
+local tradeRemote = nil
 
-local function clickWeaponsCategory()
-	print("🟡 Looking for Weapons category button...")
-	task.wait(0.5)
-	
-	local weaponsBtn = findButtonByText("Weapons", PlayerGui)
-	if weaponsBtn then
-		print("✅ Found Weapons button, clicking...")
-		weaponsBtn:Activate()
-		task.wait(1)
-		return true
-	else
-		print("❌ Weapons button not found")
-		return false
+-- Search in ReplicatedStorage
+for _, name in pairs(possibleNames) do
+	local remote = ReplicatedStorage:FindFirstChild(name)
+	if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
+		print("✅ FOUND: " .. remote:GetFullName())
+		tradeRemote = remote
+		break
 	end
 end
 
-local function addAllWeaponsToOffer()
-	print("📦 Adding all weapons from their inventory...")
-	task.wait(0.5)
-	
-	local addedCount = 0
-	for _, obj in pairs(PlayerGui:GetDescendants()) do
-		if obj:IsA("GuiButton") then
-			local text = obj.Text:lower()
-			-- Look for "+" buttons or "Add" buttons on weapon items
-			if text:match("^%+$") or text:match("add") then
-				local parent = obj.Parent
-				if parent and parent.Name:match("[Ww]eapon") then
-					print("Adding weapon: " .. obj.Name)
-					obj:Activate()
-					addedCount = addedCount + 1
-					task.wait(0.2)
-				end
-			end
-		end
-	end
-	
-	print("✅ Added " .. addedCount .. " weapons")
-	return addedCount > 0
-end
-
-local function acceptTrade()
-	print("✅ Accepting trade...")
-	task.wait(0.5)
-	
-	local acceptBtn = findButtonByText("Accept", PlayerGui)
-	if acceptBtn then
-		print("✅ Clicking Accept button...")
-		acceptBtn:Activate()
-		task.wait(1)
-		return true
-	else
-		print("❌ Accept button not found")
-		return false
-	end
-end
-
-local function forceAcceptOnTarget(targetPlayer)
-	print("🔄 Forcing acceptance on target player...")
-	
-	task.spawn(function()
-		local targetGui = targetPlayer:WaitForChild("PlayerGui")
-		task.wait(1)
-		
-		for i = 1, 10 do
-			for _, obj in pairs(targetGui:GetDescendants()) do
-				if obj:IsA("GuiButton") and obj.Text:match("Accept") then
-					print("✅ Force accepting on target player...")
-					obj:Activate()
-					return
-				end
-			end
-			task.wait(0.3)
-		end
-	end)
-end
-
-local function stealWeaponsTrade(targetPlayer)
-	if not targetPlayer or targetPlayer == LocalPlayer then
-		print("❌ Invalid target player")
-		return false
-	end
-	
-	print("🎯 Starting forced weapons trade with " .. targetPlayer.Name .. "...")
-	
-	-- Find and click their Trade button
-	print("🔍 Looking for Trade button for " .. targetPlayer.Name .. "...")
-	task.wait(0.3)
-	
-	local tradeBtn = nil
-	for _, obj in pairs(PlayerGui:GetDescendants()) do
-		if obj:IsA("GuiButton") and obj.Text:match("Trade") then
-			-- Check if this is the right player's Trade button
-			local found = false
-			for _, sibling in pairs(obj.Parent:GetChildren()) do
-				if sibling:IsA("TextLabel") and sibling.Text:match(targetPlayer.Name) then
-					found = true
+-- If not found, search deeper
+if not tradeRemote then
+	print("Searching deeper in ReplicatedStorage...")
+	for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+		if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+			for _, name in pairs(possibleNames) do
+				if obj.Name:match(name) then
+					print("✅ FOUND: " .. obj:GetFullName())
+					tradeRemote = obj
 					break
 				end
 			end
-			if found then
-				tradeBtn = obj
-				break
-			end
+			if tradeRemote then break end
 		end
 	end
-	
-	if not tradeBtn then
-		print("❌ Could not find Trade button for " .. targetPlayer.Name)
-		return false
+end
+
+if tradeRemote then
+	print("✅ Trade remote found: " .. tradeRemote:GetFullName())
+else
+	print("❌ Could not find trade RemoteEvent")
+	print("Available remotes in ReplicatedStorage:")
+	for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+		if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+			print("  - " .. obj.Name .. " (" .. obj.ClassName .. ")")
+		end
 	end
-	
-	print("✅ Found Trade button, clicking...")
-	tradeBtn:Activate()
-	task.wait(2)
-	
-	-- Click Weapons category
-	if not clickWeaponsCategory() then
-		print("⚠️ Could not click Weapons category")
-	end
-	
-	-- Add all weapons
-	task.wait(0.5)
-	addAllWeaponsToOffer()
-	
-	-- Force accept on target
-	task.wait(0.5)
-	forceAcceptOnTarget(targetPlayer)
-	
-	-- Accept on our side
-	task.wait(1)
-	acceptTrade()
-	
-	print("✅ Trade process complete!")
-	return true
 end
 
 -- Create GUI
-print("Creating GUI...")
-
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "WeaponThiefGui"
+screenGui.Name = "TradeGui"
 screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 999
 screenGui.Parent = PlayerGui
 
 local frame = Instance.new("Frame")
 frame.Name = "MainFrame"
-frame.Size = UDim2.new(0, 280, 0, 150)
-frame.Position = UDim2.new(0.5, -140, 0, 10)
+frame.Size = UDim2.new(0, 300, 0, 200)
+frame.Position = UDim2.new(0.5, -150, 0, 10)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BackgroundTransparency = 0.1
 frame.BorderSizePixel = 0
@@ -183,19 +79,37 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "Title"
 titleLabel.Size = UDim2.new(1, 0, 0, 30)
 titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 titleLabel.BackgroundTransparency = 0.3
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextSize = 16
 titleLabel.Font = Enum.Font.GothamBold
-titleLabel.Text = "STEAL WEAPONS"
+titleLabel.Text = "TRADE SENDER"
 titleLabel.BorderSizePixel = 0
 titleLabel.Parent = frame
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "Status"
+statusLabel.Size = UDim2.new(0.9, 0, 0, 40)
+statusLabel.Position = UDim2.new(0.05, 0, 0, 35)
+statusLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+statusLabel.BackgroundTransparency = 0.2
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+statusLabel.TextSize = 12
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextWrapped = true
+if tradeRemote then
+	statusLabel.Text = "✅ Found: " .. tradeRemote.Name
+else
+	statusLabel.Text = "❌ Remote not found"
+end
+statusLabel.BorderSizePixel = 0
+statusLabel.Parent = frame
 
 local inputBox = Instance.new("TextBox")
 inputBox.Name = "Input"
 inputBox.Size = UDim2.new(0.9, 0, 0, 35)
-inputBox.Position = UDim2.new(0.05, 0, 0, 35)
+inputBox.Position = UDim2.new(0.05, 0, 0, 80)
 inputBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 inputBox.BackgroundTransparency = 0.2
 inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -207,62 +121,83 @@ inputBox.BorderSizePixel = 0
 inputBox.Parent = frame
 
 local button = Instance.new("TextButton")
-button.Name = "TradeBtn"
+button.Name = "SendBtn"
 button.Size = UDim2.new(0.9, 0, 0, 35)
-button.Position = UDim2.new(0.05, 0, 0, 75)
-button.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+button.Position = UDim2.new(0.05, 0, 0, 120)
+button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 button.BackgroundTransparency = 0.2
 button.TextColor3 = Color3.fromRGB(255, 255, 255)
 button.TextSize = 16
 button.Font = Enum.Font.GothamBold
-button.Text = "STEAL"
+button.Text = "SEND TRADE"
 button.BorderSizePixel = 0
 button.Parent = frame
 
-print("Button created!")
-
 button.MouseButton1Click:Connect(function()
+	if not tradeRemote then
+		statusLabel.Text = "❌ Remote not found!"
+		return
+	end
+	
 	local playerName = inputBox.Text:match("^%s*(.-)%s*$")
 	
 	if playerName == "" or playerName == nil then
-		button.Text = "ENTER NAME"
-		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
-		task.wait(1.5)
-		button.Text = "STEAL"
-		button.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+		statusLabel.Text = "❌ Enter a username!"
 		return
 	end
 	
-	local target = findPlayerByName(playerName)
+	local target = Players:FindFirstChild(playerName)
 	
 	if not target then
-		button.Text = "NOT FOUND"
-		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
-		task.wait(1.5)
-		button.Text = "STEAL"
-		button.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+		statusLabel.Text = "❌ Player not found: " .. playerName
 		return
 	end
 	
-	button.Text = "STEALING..."
+	statusLabel.Text = "📤 Sending trade to " .. target.Name .. "..."
+	button.Text = "SENDING..."
 	button.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
 	
-	local success = stealWeaponsTrade(target)
+	-- Try firing with different argument patterns
+	local success = false
 	
-	task.wait(0.5)
-	if success then
-		button.Text = "SUCCESS!"
-		button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-		task.wait(2)
-	else
-		button.Text = "FAILED"
-		button.BackgroundColor3 = Color3.fromRGB(128, 0, 0)
-		task.wait(2)
+	-- Pattern 1: Just player
+	pcall(function()
+		tradeRemote:FireServer(target)
+		success = true
+		print("✅ Sent with pattern: (target)")
+	end)
+	
+	-- Pattern 2: Player + data
+	if not success then
+		pcall(function()
+			tradeRemote:FireServer(target, {})
+			success = true
+			print("✅ Sent with pattern: (target, {})")
+		end)
 	end
 	
-	button.Text = "STEAL"
-	button.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+	-- Pattern 3: Player name string
+	if not success then
+		pcall(function()
+			tradeRemote:FireServer(target.Name)
+			success = true
+			print("✅ Sent with pattern: (targetName)")
+		end)
+	end
+	
+	task.wait(1)
+	
+	if success then
+		statusLabel.Text = "✅ Trade sent!"
+		button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+	else
+		statusLabel.Text = "⚠️ Sent but might have failed"
+		button.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+	end
+	
+	task.wait(2)
+	button.Text = "SEND TRADE"
+	button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 end)
 
-_G.StealWeapons = stealWeaponsTrade
-print("✅ Weapon Stealer loaded! Enter username and click STEAL button.")
+print("✅ Trade Sender GUI created!")
